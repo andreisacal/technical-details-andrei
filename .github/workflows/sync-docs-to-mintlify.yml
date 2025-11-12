@@ -12,9 +12,9 @@ concurrency:
   cancel-in-progress: true
 
 env:
+  # 🧩 Configuration Variables
   TARGET_REPO: andreisacal/mintlify-test
   TARGET_PATH: docs-repo
-  NODE_VERSION: lts/*
   DOCS_REPO_TOKEN: ${{ secrets.DOCS_REPO_TOKEN }}
   SYNC_BRANCH_PREFIX: auto-sync/
   COMMIT_MESSAGE: "docs: sync from main repository"
@@ -48,44 +48,32 @@ jobs:
           token: ${{ env.DOCS_REPO_TOKEN }}
           path: ${{ env.TARGET_PATH }}
 
-      - name: ⚡ Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: ${{ env.NODE_VERSION }}
-
-      - name: 🔍 Detect and Validate Changed Markdown Files
+      - name: 🔍 Detect Changed Markdown Files
         id: detect
         run: |
           echo "📄 Detecting changed Markdown files..."
-          CHANGED_FILES=$(git diff --name-only HEAD^ HEAD -- '*.md' 2>/dev/null || git ls-tree --name-only -r HEAD -- '*.md')
+          CHANGED_FILES=$(git diff --diff-filter=ACMRT --name-only origin/main...HEAD -- '*.md' || true)
 
-          echo "📌 Running markdownlint for formatting issues..."
-          npm install -g markdownlint-cli
-          VALIDATION_ERRORS=""
-
-          while IFS= read -r file; do
-            if [ -f "$file" ]; then
-              OUTPUT=$(markdownlint "$file" 2>&1 || true)
-              if [ -n "$OUTPUT" ]; then
-                VALIDATION_ERRORS="${VALIDATION_ERRORS}${OUTPUT}\n"
-              fi
-            fi
-          done <<< "$CHANGED_FILES"
-
-          if [ -z "$VALIDATION_ERRORS" ]; then
-            echo "✅ No formatting issues detected."
+          if [ -z "$CHANGED_FILES" ]; then
+            echo "ℹ️ No markdown files changed."
           else
-            echo -e "⚠️ Found formatting issues:\n$VALIDATION_ERRORS"
+            echo "✅ Found changed markdown files:"
+            echo "$CHANGED_FILES"
           fi
 
           {
             echo "changed_files<<EOF"
             echo "$CHANGED_FILES"
             echo "EOF"
-            echo "validation_errors<<EOF"
-            echo -e "$VALIDATION_ERRORS"
-            echo "EOF"
           } >> "$GITHUB_OUTPUT"
+
+      - name: 🧹 Lint Markdown Files
+        id: lint
+        if: steps.detect.outputs.changed_files != ''
+        uses: avto-dev/markdown-lint@v1
+        continue-on-error: true
+        with:
+          args: ${{ steps.detect.outputs.changed_files }}
 
       - name: 🚀 Sync Markdown Files to Target Repo as .mdx
         id: sync
@@ -100,7 +88,6 @@ jobs:
               target_path=$(find "${{ env.TARGET_PATH }}" -type f -name "${filename_base}.mdx" | head -n 1 || true)
 
               if [ -n "$target_path" ]; then
-                # Only copy if content differs
                 if ! diff -q "$file" "$target_path" >/dev/null; then
                   cp "$file" "$target_path"
                   relpath=$(realpath --relative-to="${{ env.TARGET_PATH }}" "$target_path")
@@ -141,8 +128,8 @@ jobs:
             ### ✅ Synced Files
             ${{ steps.sync.outputs.synced_files || 'None' }}
 
-            ### ⚠️ Formatting Issues
-            ${{ steps.detect.outputs.validation_errors || 'None' }}
+            ### ⚠️ Lint Issues
+            ${{ steps.lint.outcome == 'failure' && 'Linting errors detected' || 'None' }}
 
             ### ❌ Skipped Files
             ${{ steps.sync.outputs.skipped_files || 'None' }}
@@ -156,8 +143,8 @@ jobs:
           ## ✅ Synced Files
           ${{ steps.sync.outputs.synced_files || 'None' }}
           
-          ## ⚠️ Formatting Issues
-          ${{ steps.detect.outputs.validation_errors || 'None' }}
+          ## ⚠️ Lint Issues
+          ${{ steps.lint.outcome == 'failure' && 'Linting errors detected' || 'None' }}
           
           ## ❌ Skipped Files
           ${{ steps.sync.outputs.skipped_files || 'None' }}
