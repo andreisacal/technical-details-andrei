@@ -39,7 +39,7 @@ jobs:
       - name: 🔄 Checkout Source Repository
         uses: actions/checkout@v4
         with:
-          fetch-depth: 2
+          fetch-depth: 0
 
       - name: 📂 Checkout Target Docs Repository
         uses: actions/checkout@v4
@@ -52,6 +52,7 @@ jobs:
         id: detect
         run: |
           echo "📄 Detecting changed Markdown files..."
+          git fetch origin main --depth=1
           CHANGED_FILES=$(git diff --diff-filter=ACMRT --name-only origin/main...HEAD -- '*.md' || true)
 
           if [ -z "$CHANGED_FILES" ]; then
@@ -66,6 +67,7 @@ jobs:
             echo "$CHANGED_FILES"
             echo "EOF"
           } >> "$GITHUB_OUTPUT"
+
 
       - name: 🧹 Lint Markdown Files
         id: lint
