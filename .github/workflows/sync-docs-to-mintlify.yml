@@ -177,9 +177,10 @@ jobs:
               } catch (error) {
                 console.error(`❌ Failed to create issue for ${file}:`, error.message);
               }
-            ]
+            }
         env:
           SKIPPED_FILES: ${{ steps.sync.outputs.skipped_files }}
+
 
 
       - name: 📬 Create Pull Request
