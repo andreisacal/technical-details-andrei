@@ -6,6 +6,9 @@ on:
     paths:
       - '**/*.md'
       - '.github/workflows/sync-docs.yml'
+    paths-ignore:
+      - 'README.md'
+      - 'CONTRIBUTING.md'
 
 concurrency:
   group: sync-docs-${{ github.ref }}
@@ -124,6 +127,24 @@ jobs:
             echo "EOF"
             echo "files_updated=$FILES_UPDATED"
           } >> "$GITHUB_OUTPUT"
+
+      - name: 📝 Create GitHub Issue for Missing Docs
+        if: steps.sync.outputs.skipped_files != ''
+        uses: peter-evans/create-issue@v5
+        with:
+          token: ${{ env.DOCS_REPO_TOKEN }}
+          repository: ${{ env.TARGET_REPO }}
+          title: "New documentation file(s) needed in target repo"
+          labels: needs-docs
+          body: |
+            The following Markdown file(s) exist in the source repository but have no corresponding .mdx in the target repository:
+
+            ${{ steps.sync.outputs.skipped_files }}
+
+            **Source repository:** ${{ github.repository }}  
+            **Commit SHA:** ${{ github.sha }}  
+
+            Please create the corresponding .mdx file(s) in the target repository.
 
       - name: 📬 Create Pull Request for Docs Sync
         if: steps.sync.outputs.files_updated == '1'
