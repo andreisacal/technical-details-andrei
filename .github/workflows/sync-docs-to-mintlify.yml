@@ -18,6 +18,7 @@ env:
   NODE_VERSION: lts/*
   SYNC_BRANCH_PREFIX: auto-sync/
   DOCS_REPO_TOKEN: ${{ secrets.DOCS_REPO_TOKEN }}
+  REVIEWERS: andreisacal
 
 jobs:
   sync-docs:
@@ -149,13 +150,13 @@ jobs:
 
       - name: 📝 Create Issues for Missing Documentation
         if: steps.sync.outputs.has_skipped == 'true'
+        id: create_issues
         uses: actions/github-script@v7
         with:
           github-token: ${{ env.DOCS_REPO_TOKEN }}
           script: |
             const fs = require('fs').promises;
 
-            // Read the skipped files output safely
             const skippedRaw = process.env.SKIPPED_FILES || '';
             const skippedFiles = skippedRaw
               .split('\n')
@@ -164,13 +165,14 @@ jobs:
 
             console.log('Skipped files detected:', skippedFiles);
 
+            let issueUrls = [];
+
             for (const file of skippedFiles) {
               try {
-                console.log(`Creating issue for missing file: ${file}`);
                 const content = await fs.readFile(file, 'utf8');
                 const fileName = file.split('/').pop();
 
-                await github.rest.issues.create({
+                const issue = await github.rest.issues.create({
                   owner: '${{ env.TARGET_REPO }}'.split('/')[0],
                   repo: '${{ env.TARGET_REPO }}'.split('/')[1],
                   title: `📄 Missing documentation: ${fileName}`,
@@ -190,16 +192,24 @@ jobs:
                     '---',
                     '*This issue was automatically created by the docs sync workflow.*'
                   ].join('\n'),
-                  labels: ['documentation', 'needs-docs', 'auto-created']
+                  labels: ['documentation', 'needs-docs', 'auto-created'],
+                  assignees: ['${{ env.REVIEWERS }}']
                 });
+
+                issueUrls.push(issue.data.html_url);
+
               } catch (error) {
                 console.error(`❌ Failed to create issue for ${file}:`, error.message);
               }
             }
+
+            // Output all URLs as a comma-separated string
+            core.setOutput('issue-urls', issueUrls.join(','));
         env:
           SKIPPED_FILES: ${{ steps.sync.outputs.skipped_files }}
 
       - name: 📬 Create Pull Request
+        id: create_pr
         if: steps.sync.outputs.files_updated == '1'
         uses: peter-evans/create-pull-request@v6
         with:
@@ -215,7 +225,6 @@ jobs:
             **Source Repository:** ${{ github.repository }}
             **Source Commit:** ${{ github.sha }}
             **Triggered By:** @${{ github.actor }}
-            **PR:** #${{ github.event.pull_request.number }}
             
             ---
             
@@ -234,19 +243,36 @@ jobs:
           labels: |
             documentation
             auto-sync
+          reviewers: ${{ env.REVIEWERS }}
 
       - name: 📊 Generate Summary
         if: always() && steps.detect.outputs.has_changes == 'true'
         run: |
-          cat >> $GITHUB_STEP_SUMMARY << 'EOF'
+          # Get the PR URL from the previous step output
+          PR_URL="${{ steps.create_pr.outputs.pull-request-url }}"
+
+          cat >> $GITHUB_STEP_SUMMARY << EOF
           # 📚 Documentation Sync Summary
           
-          ## ✅ Synced Files
+          ## ✅ Documentation Files Updated
+          These files were automatically synced from the technical repository to the front-facing documentation repository.
           ${{ steps.sync.outputs.synced_files || '_No files were synced_' }}
+
+          ${PR_URL:+[View Pull Request]($PR_URL)}
           
-          ## ⚠️ Validation Warnings
+          ## ⚠️ Markdown Validation Warnings
+          Some files may have formatting issues. These warnings do **not prevent syncing**, but you may want to review them:
           ${{ steps.validate.outputs.validation_errors || '_No validation issues found_' }}
           
-          ## ❌ Skipped Files
+          ## ❌ Files Not Synced
+          These files could not be synced because they’re missing in the documentation repo.  
+          A GitHub issue was automatically created for each — the documentation team should review and add them.
+
+          Files:
           ${{ steps.sync.outputs.skipped_files || '_No files were skipped_' }}
+          
+          Issues created for missing files:
+          $([ -n "$ISSUE_URLS" ] && echo "$ISSUE_URLS" | tr ',' '\n' | sed 's|^|- [View Issue](&)|')
           EOF
+
+
