@@ -138,29 +138,49 @@ jobs:
           github-token: ${{ secrets.DOCS_REPO_TOKEN }}
           script: |
             const fs = require('fs').promises;
-            const skippedFiles = `${{ steps.sync.outputs.skipped_files }}`
+
+            // Read the skipped files output safely
+            const skippedRaw = process.env.SKIPPED_FILES || '';
+            const skippedFiles = skippedRaw
               .split('\n')
-              .filter(f => f)
-              .map(f => f.match(/`([^`]+)`/)?.[1])
+              .map(line => (line.match(/`([^`]+)`/) || [])[1])
               .filter(Boolean);
-            
+
+            console.log('Skipped files detected:', skippedFiles);
+
             for (const file of skippedFiles) {
               try {
                 console.log(`Creating issue for missing file: ${file}`);
-                const content = await fs.readFile(file, 'utf-8');
+                const content = await fs.readFile(file, 'utf8');
                 const fileName = file.split('/').pop();
-                
+
                 await github.rest.issues.create({
                   owner: '${{ env.TARGET_REPO }}'.split('/')[0],
                   repo: '${{ env.TARGET_REPO }}'.split('/')[1],
                   title: `📄 Missing documentation: ${fileName}`,
-                  body: `## Missing Documentation File\n\n**Source:** \`${file}\`\n**Repository:** ${{ github.repository }}\n**Commit:** ${{ github.sha }}\n\n### Content Preview\n\n\`\`\`markdown\n${content.slice(0, 1000)}${content.length > 1000 ? '\n...(truncated)' : ''}\n\`\`\`\n\n---\n*This issue was automatically created by the docs sync workflow.*`,
-                  labels: ['documentation', 'needs-docs', 'auto-created'],
+                  body: [
+                    `## Missing Documentation File`,
+                    `**Source:** \`${file}\``,
+                    `**Repository:** ${{ github.repository }}`,
+                    `**Commit:** ${{ github.sha }}`,
+                    ``,
+                    `### Content Preview`,
+                    '```markdown',
+                    content.length > 1000 ? content.slice(0, 1000) + '\n...(truncated)' : content,
+                    '```',
+                    '',
+                    '---',
+                    '*This issue was automatically created by the docs sync workflow.*'
+                  ].join('\n'),
+                  labels: ['documentation', 'needs-docs', 'auto-created']
                 });
               } catch (error) {
-                console.error(`Failed to create issue for ${file}: ${error.message}`);
+                console.error(`❌ Failed to create issue for ${file}:`, error.message);
               }
-            }
+            ]
+        env:
+          SKIPPED_FILES: ${{ steps.sync.outputs.skipped_files }}
+
 
       - name: 📬 Create Pull Request
         if: steps.sync.outputs.files_updated == '1'
