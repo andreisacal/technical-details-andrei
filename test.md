@@ -23,4 +23,9 @@ andrei
 
 test
 
+<<<<<<< HEAD
 hghgg
+=======
+
+fedfeadwwd
+>>>>>>> 1ccf151 (t2)
