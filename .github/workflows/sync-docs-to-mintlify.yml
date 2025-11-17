@@ -127,23 +127,29 @@ jobs:
             echo "files_updated=$FILES_UPDATED"
           } >> "$GITHUB_OUTPUT"
 
-      - name: 📝 Create GitHub Issue for Missing Docs
+      - name: 📝 Create GitHub Issues for Missing Docs
         if: steps.sync.outputs.skipped_files != ''
-        uses: peter-evans/create-issue-from-file@v6
-        with:
-          token: ${{ env.DOCS_REPO_TOKEN }}
-          repository: ${{ env.TARGET_REPO }}
-          title: "New documentation file(s) needed in target repo"
-          labels: needs-docs
-          body: |
-            The following Markdown file(s) exist in the source repository but have no corresponding .mdx in the target repository:
-
-            ${{ steps.sync.outputs.skipped_files }}
-
-            **Source repository:** ${{ github.repository }}  
-            **Commit SHA:** ${{ github.sha }}  
-
-            Please create the corresponding .mdx file(s) in the target repository.
+        run: |
+          # Convert newline-separated string into array
+          IFS=$'\n' read -rd '' -a files <<< "${{ steps.sync.outputs.skipped_files }}"
+          
+          for file in "${files[@]}"; do
+            echo "Creating issue for missing file: $file"
+            
+            # Temporarily copy the file to a safe path because create-issue-from-file needs a single path
+            temp_issue_file=".issue-${file//\//-}.md"
+            cp "$file" "$temp_issue_file"
+            
+            # Run the create-issue-from-file action
+            gh workflow run create-issue-from-file \
+              -f title="Missing documentation: $file" \
+              -f content-filepath="$temp_issue_file" \
+              -f labels="needs-docs" \
+              --repo ${{ env.TARGET_REPO }}
+              
+            # Remove temp file
+            rm "$temp_issue_file"
+          done
 
       - name: 📬 Create Pull Request for Docs Sync
         if: steps.sync.outputs.files_updated == '1'
