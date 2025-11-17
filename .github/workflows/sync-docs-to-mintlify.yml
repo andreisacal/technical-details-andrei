@@ -53,19 +53,34 @@ jobs:
         id: detect
         run: |
           echo "📄 Detecting changed Markdown files..."
-          
+
           # Get changed markdown files
           CHANGED_FILES=$(git diff --name-only HEAD^ HEAD -- '*.md' 2>/dev/null || git ls-tree --name-only -r HEAD -- '*.md')
-          
+
           if [ -z "$CHANGED_FILES" ]; then
-            echo "No markdown files changed"
+            echo "No markdown files changed."
             echo "has_changes=false" >> "$GITHUB_OUTPUT"
             exit 0
           fi
-          
+
+          echo "All changed markdown files:"
+          echo "$CHANGED_FILES"
+
+          # Filter out README.md and CONTRIBUTING.md (at any path level)
+          FILTERED=$(echo "$CHANGED_FILES" | grep -Ev '(^|/)README\.md$|(^|/)CONTRIBUTING\.md$' || true)
+
+          if [ -z "$FILTERED" ]; then
+            echo "🛑 Only README.md or CONTRIBUTING.md changed. Skipping documentation sync."
+            echo "has_changes=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          echo "✅ Markdown changes detected that require sync:"
+          echo "$FILTERED"
+
           echo "has_changes=true" >> "$GITHUB_OUTPUT"
           echo "changed_files<<EOF" >> "$GITHUB_OUTPUT"
-          echo "$CHANGED_FILES" >> "$GITHUB_OUTPUT"
+          echo "$FILTERED" >> "$GITHUB_OUTPUT"
           echo "EOF" >> "$GITHUB_OUTPUT"
 
       - name: ✅ Validate Markdown Files
