@@ -129,7 +129,7 @@ jobs:
 
       - name: 📝 Create GitHub Issue for Missing Docs
         if: steps.sync.outputs.skipped_files != ''
-        uses: peter-evans/create-issue@v5
+        uses: peter-evans/create-issue-from-file@v6
         with:
           token: ${{ env.DOCS_REPO_TOKEN }}
           repository: ${{ env.TARGET_REPO }}
