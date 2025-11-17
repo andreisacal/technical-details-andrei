@@ -123,6 +123,7 @@ jobs:
         if: steps.sync.outputs.skipped_files != ''
         uses: actions/github-script@v6
         with:
+          github-token: ${{ env.DOCS_REPO_TOKEN }}
           script: |
             const skippedFiles = `${{ steps.sync.outputs.skipped_files }}`.split('\n').filter(f => f);
             for (const file of skippedFiles) {
