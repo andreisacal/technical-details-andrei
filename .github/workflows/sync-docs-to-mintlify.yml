@@ -74,12 +74,6 @@ jobs:
             fi
           done <<< "$CHANGED_FILES"
 
-          if [ -z "$VALIDATION_ERRORS" ]; then
-            echo "✅ No formatting issues detected."
-          else
-            echo -e "⚠️ Found formatting issues:\n$VALIDATION_ERRORS"
-          fi
-
           {
             echo "changed_files<<EOF"
             echo "$CHANGED_FILES"
@@ -102,17 +96,15 @@ jobs:
               target_path=$(find "${{ env.TARGET_PATH }}" -type f -name "${filename_base}.mdx" | head -n 1 || true)
 
               if [ -n "$target_path" ]; then
-                # Only copy if content differs
                 if ! diff -q "$file" "$target_path" >/dev/null; then
                   cp "$file" "$target_path"
                   relpath=$(realpath --relative-to="${{ env.TARGET_PATH }}" "$target_path")
                   SYNCED_FILES="${SYNCED_FILES}✅ $file -> $relpath\n"
                   FILES_UPDATED=1
-                else
-                  SKIPPED_FILES="${SKIPPED_FILES}⚪ $file (no changes)\n"
                 fi
               else
-                SKIPPED_FILES="${SKIPPED_FILES}❌ $file (no corresponding .mdx in target repo)\n"
+                # Only output the actual file path for missing docs
+                SKIPPED_FILES="${SKIPPED_FILES}${file}\n"
               fi
             fi
           done <<< "${{ steps.detect.outputs.changed_files }}"
@@ -129,27 +121,21 @@ jobs:
 
       - name: 📝 Create GitHub Issues for Missing Docs
         if: steps.sync.outputs.skipped_files != ''
-        run: |
-          # Convert newline-separated string into array
-          IFS=$'\n' read -rd '' -a files <<< "${{ steps.sync.outputs.skipped_files }}"
-          
-          for file in "${files[@]}"; do
-            echo "Creating issue for missing file: $file"
-            
-            # Temporarily copy the file to a safe path because create-issue-from-file needs a single path
-            temp_issue_file=".issue-${file//\//-}.md"
-            cp "$file" "$temp_issue_file"
-            
-            # Run the create-issue-from-file action
-            gh workflow run create-issue-from-file \
-              -f title="Missing documentation: $file" \
-              -f content-filepath="$temp_issue_file" \
-              -f labels="needs-docs" \
-              --repo ${{ env.TARGET_REPO }}
-              
-            # Remove temp file
-            rm "$temp_issue_file"
-          done
+        uses: actions/github-script@v6
+        with:
+          script: |
+            const skippedFiles = `${{ steps.sync.outputs.skipped_files }}`.split('\n').filter(f => f);
+            for (const file of skippedFiles) {
+              console.log(`Creating issue for missing file: ${file}`);
+              const content = await require('fs').promises.readFile(file, 'utf-8');
+              await github.rest.issues.create({
+                owner: 'andreisacal',
+                repo: 'mintlify-test',
+                title: `Missing documentation: ${file}`,
+                body: content,
+                labels: ['needs-docs'],
+              });
+            }
 
       - name: 📬 Create Pull Request for Docs Sync
         if: steps.sync.outputs.files_updated == '1'
