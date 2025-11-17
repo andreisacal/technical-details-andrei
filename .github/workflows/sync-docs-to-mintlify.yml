@@ -219,7 +219,9 @@ jobs:
         if: always() && steps.detect.outputs.has_changes == 'true'
         run: |
           PR_URL="${{ steps.create_pr.outputs.pull-request-url }}"
-          cat >> $GITHUB_STEP_SUMMARY << "EOF"
+          ISSUES_FORMATTED=$([ -n "$ISSUE_URLS" ] && echo "$ISSUE_URLS" | tr ',' '\n' | sed 's|^|- [View Issue](&)|' || echo '_No issues created_')
+          
+          cat >> $GITHUB_STEP_SUMMARY << EOF
           # 📚 Documentation Sync Summary
 
           ## ✅ Documentation Files Updated
@@ -239,7 +241,5 @@ jobs:
           Files:
           ${{ steps.sync.outputs.skipped_files || '_No files were skipped_' }}
 
-          Issues created for missing files:
-          $([ -n "$ISSUE_URLS" ] && echo "$ISSUE_URLS" | tr ',' '\n' | sed 's|^|- [View Issue](&)|' || echo '_No issues created_')
+          $ISSUES_FORMATTED
           EOF
-
