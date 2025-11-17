@@ -219,8 +219,8 @@ jobs:
         if: always() && steps.detect.outputs.has_changes == 'true'
         run: |
           PR_URL="${{ steps.create_pr.outputs.pull-request-url }}"
-          SYNCED_FILES="${{ steps.sync.outputs.synced_files }}"   # Capture sync output in a variable
-          SKIPPED_FILES="${{ steps.sync.outputs.skipped_files }}" # Capture skipped output
+          SYNCED_FILES='${{ steps.sync.outputs.synced_files }}'
+          SKIPPED_FILES='${{ steps.sync.outputs.skipped_files }}'
           ISSUES_FORMATTED=$([ -n "$ISSUE_URLS" ] && echo "$ISSUE_URLS" | tr ',' '\n' | sed 's|^|- [View Issue](&)|' || echo '_No issues created_')
           
           cat >> $GITHUB_STEP_SUMMARY << EOF
@@ -245,4 +245,5 @@ jobs:
 
           $ISSUES_FORMATTED
           EOF
+
 
