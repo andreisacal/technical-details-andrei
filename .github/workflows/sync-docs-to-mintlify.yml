@@ -1,7 +1,8 @@
 name: 📚 Sync Docs to Mintlify
 
 on:
-  push:
+  pull_request:
+    types: [closed]
     branches: [main]
     paths:
       - '**/*.md'
@@ -33,6 +34,7 @@ env:
 
 jobs:
   sync-docs:
+    if: github.event.pull_request.merged == true
     runs-on: ubuntu-latest
     permissions:
       contents: read
