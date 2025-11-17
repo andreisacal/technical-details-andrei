@@ -19,8 +19,8 @@ test
 
 afain
 
-<<<<<<< HEAD
 hello   
-=======
-dwadawdw
->>>>>>> 1ccf151 (t2)
+
+
+
+andrei1224
