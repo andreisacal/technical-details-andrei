@@ -3,7 +3,8 @@ name: 📚 Sync Docs to Mintlify
 on:
   pull_request:
     types: [closed]
-    branches: [main]
+    branches:
+      - main
     paths:
       - '**/*.md'
       - '.github/workflows/sync-docs.yml'
@@ -54,31 +55,20 @@ jobs:
         id: detect
         run: |
           echo "📄 Detecting changed Markdown files..."
-
-          # Get changed markdown files
           CHANGED_FILES=$(git diff --name-only HEAD^ HEAD -- '*.md' 2>/dev/null || git ls-tree --name-only -r HEAD -- '*.md')
-
           if [ -z "$CHANGED_FILES" ]; then
             echo "No markdown files changed."
             echo "has_changes=false" >> "$GITHUB_OUTPUT"
             exit 0
           fi
-
-          echo "All changed markdown files:"
-          echo "$CHANGED_FILES"
-
-          # Filter out README.md and CONTRIBUTING.md (at any path level)
           FILTERED=$(echo "$CHANGED_FILES" | grep -Ev '(^|/)README\.md$|(^|/)CONTRIBUTING\.md$' || true)
-
           if [ -z "$FILTERED" ]; then
             echo "🛑 Only README.md or CONTRIBUTING.md changed. Skipping documentation sync."
             echo "has_changes=false" >> "$GITHUB_OUTPUT"
             exit 0
           fi
-
           echo "✅ Markdown changes detected that require sync:"
           echo "$FILTERED"
-
           echo "has_changes=true" >> "$GITHUB_OUTPUT"
           echo "changed_files<<EOF" >> "$GITHUB_OUTPUT"
           echo "$FILTERED" >> "$GITHUB_OUTPUT"
@@ -91,7 +81,6 @@ jobs:
         run: |
           echo "📌 Running markdownlint..."
           VALIDATION_ERRORS=""
-          
           while IFS= read -r file; do
             if [ -f "$file" ]; then
               OUTPUT=$(markdownlint "$file" 2>&1 || true)
@@ -100,7 +89,6 @@ jobs:
               fi
             fi
           done <<< "${{ steps.detect.outputs.changed_files }}"
-          
           {
             echo "validation_errors<<EOF"
             echo -e "$VALIDATION_ERRORS"
@@ -114,17 +102,11 @@ jobs:
           SYNCED_FILES=""
           SKIPPED_FILES=""
           FILES_UPDATED=0
-          
           while IFS= read -r file; do
-            if [ ! -f "$file" ]; then
-              continue
-            fi
-            
+            [ ! -f "$file" ] && continue
             filename_base=$(basename "$file" .md)
             target_path=$(find "${{ env.TARGET_PATH }}" -type f -name "${filename_base}.mdx" | head -n 1)
-            
             if [ -n "$target_path" ]; then
-              # File exists in target repo - check if it needs updating
               if ! diff -q "$file" "$target_path" >/dev/null 2>&1; then
                 cp "$file" "$target_path"
                 relpath=$(realpath --relative-to="${{ env.TARGET_PATH }}" "$target_path")
@@ -132,11 +114,9 @@ jobs:
                 FILES_UPDATED=1
               fi
             else
-              # File doesn't exist in target repo
               SKIPPED_FILES="${SKIPPED_FILES}- ❌ \`${file}\` (no matching .mdx file found)\n"
             fi
           done <<< "${{ steps.detect.outputs.changed_files }}"
-          
           {
             echo "synced_files<<EOF"
             echo -e "$SYNCED_FILES"
@@ -156,22 +136,17 @@ jobs:
           github-token: ${{ env.DOCS_REPO_TOKEN }}
           script: |
             const fs = require('fs').promises;
-
             const skippedRaw = process.env.SKIPPED_FILES || '';
             const skippedFiles = skippedRaw
               .split('\n')
               .map(line => (line.match(/`([^`]+)`/) || [])[1])
               .filter(Boolean);
-
             console.log('Skipped files detected:', skippedFiles);
-
             let issueUrls = [];
-
             for (const file of skippedFiles) {
               try {
                 const content = await fs.readFile(file, 'utf8');
                 const fileName = file.split('/').pop();
-
                 const issue = await github.rest.issues.create({
                   owner: '${{ env.TARGET_REPO }}'.split('/')[0],
                   repo: '${{ env.TARGET_REPO }}'.split('/')[1],
@@ -181,12 +156,10 @@ jobs:
                     `**Source:** \`${file}\``,
                     `**Repository:** ${{ github.repository }}`,
                     `**Commit:** ${{ github.sha }}`,
-                    ``,
+                    '',
                     `### Content Preview`,
                     '```markdown',
-                    content.length > 1000
-                      ? content.slice(0, 1000) + '\n...(truncated)'
-                      : content,
+                    content.length > 1000 ? content.slice(0,1000) + '\n...(truncated)' : content,
                     '```',
                     '',
                     '---',
@@ -195,18 +168,18 @@ jobs:
                   labels: ['documentation', 'needs-docs', 'auto-created'],
                   assignees: ['${{ env.REVIEWERS }}']
                 });
-
                 issueUrls.push(issue.data.html_url);
-
               } catch (error) {
                 console.error(`❌ Failed to create issue for ${file}:`, error.message);
               }
             }
-
-            // Output all URLs as a comma-separated string
             core.setOutput('issue-urls', issueUrls.join(','));
         env:
           SKIPPED_FILES: ${{ steps.sync.outputs.skipped_files }}
+
+      - name: Export Issue URLs
+        if: steps.create_issues.outputs.issue-urls
+        run: echo "ISSUE_URLS=${{ steps.create_issues.outputs.issue-urls }}" >> $GITHUB_ENV
 
       - name: 📬 Create Pull Request
         id: create_pr
@@ -233,10 +206,7 @@ jobs:
             
             ### ⚠️ Validation Warnings
             ${{ steps.validate.outputs.validation_errors || '_No validation issues found_' }}
-            
-            ### ❌ Skipped Files
-            ${{ steps.sync.outputs.skipped_files || '_No files were skipped_' }}
-            
+
             ---
             
             <sub>🤖 This PR was automatically generated by the [docs sync workflow](https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }})</sub>
@@ -248,9 +218,7 @@ jobs:
       - name: 📊 Generate Summary
         if: always() && steps.detect.outputs.has_changes == 'true'
         run: |
-          # Get the PR URL from the previous step output
           PR_URL="${{ steps.create_pr.outputs.pull-request-url }}"
-
           cat >> $GITHUB_STEP_SUMMARY << EOF
           # 📚 Documentation Sync Summary
           
@@ -272,7 +240,5 @@ jobs:
           ${{ steps.sync.outputs.skipped_files || '_No files were skipped_' }}
           
           Issues created for missing files:
-          $([ -n "$ISSUE_URLS" ] && echo "$ISSUE_URLS" | tr ',' '\n' | sed 's|^|- [View Issue](&)|')
+          $([ -n "$ISSUE_URLS" ] && echo "$ISSUE_URLS" | tr ',' '\n' | sed 's|^|- [View Issue](&)|' || echo '_No issues created_')
           EOF
-
-
