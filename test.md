@@ -22,3 +22,10 @@ andrei
 ## Test1
 
 test
+
+<<<<<<< HEAD
+hghgg
+=======
+
+fedfeadwwd
+>>>>>>> 1ccf151 (t2)
