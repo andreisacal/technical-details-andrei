@@ -220,8 +220,14 @@ jobs:
         run: |
           # Get PR URL, synced and skipped files
           PR_URL="${{ steps.create_pr.outputs.pull-request-url }}"
-          SYNCED_FILES="${{ steps.sync.outputs.synced_files }}"
-          SKIPPED_FILES="${{ steps.sync.outputs.skipped_files }}"
+          SYNCED_FILES=$(cat << 'INNER_EOF'
+          ${{ steps.sync.outputs.synced_files }}
+          INNER_EOF
+          )
+          SKIPPED_FILES=$(cat << 'INNER_EOF'
+          ${{ steps.sync.outputs.skipped_files }}
+          INNER_EOF
+          )
 
           # Prepare issue links safely
           if [ -n "$ISSUE_URLS" ]; then
@@ -231,33 +237,43 @@ jobs:
           fi
 
           # Prepare validation errors safely
-          VALIDATION_ERRORS="${{ steps.validate.outputs.validation_errors }}"
+          VALIDATION_ERRORS=$(cat << 'INNER_EOF'
+          ${{ steps.validate.outputs.validation_errors }}
+          INNER_EOF
+          )
           if [ -z "$VALIDATION_ERRORS" ]; then
             VALIDATION_ERRORS="_No validation issues found_"
           fi
 
           # Append safely to GitHub Step Summary
-          cat >> "$GITHUB_STEP_SUMMARY" << EOF
+          cat >> "$GITHUB_STEP_SUMMARY" << 'EOF'
           # 📚 Documentation Sync Summary
 
           ## ✅ Documentation Files Updated
           These files were automatically synced from the technical repository to the front-facing documentation repository.
-          $SYNCED_FILES
-
-          ${PR_URL:+[View Pull Request]($PR_URL)}
+          EOF
+          echo "$SYNCED_FILES" >> "$GITHUB_STEP_SUMMARY"
+          
+          if [ -n "$PR_URL" ]; then
+            echo "" >> "$GITHUB_STEP_SUMMARY"
+            echo "[View Pull Request]($PR_URL)" >> "$GITHUB_STEP_SUMMARY"
+          fi
+          
+          cat >> "$GITHUB_STEP_SUMMARY" << 'EOF'
 
           ## ⚠️ Markdown Validation Warnings
           Some files may have formatting issues. These warnings do **not prevent syncing**, but you may want to review them:
-          $VALIDATION_ERRORS
+          EOF
+          echo "$VALIDATION_ERRORS" >> "$GITHUB_STEP_SUMMARY"
+          
+          cat >> "$GITHUB_STEP_SUMMARY" << 'EOF'
 
           ## ❌ Files Not Synced
           These files could not be synced because they're missing in the documentation repo.  
           A GitHub issue was automatically created for each — the documentation team should review and add them.
 
           Files:
-          $SKIPPED_FILES
-
-          $ISSUES_FORMATTED
           EOF
-
-
+          echo "$SKIPPED_FILES" >> "$GITHUB_STEP_SUMMARY"
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+          echo "$ISSUES_FORMATTED" >> "$GITHUB_STEP_SUMMARY"
