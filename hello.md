@@ -1,7 +1,7 @@
 # 👋 Hello Module Documentation
 
 **File:** `hello.md`  
-**Purpose:** Provide details on the `hello` module — what it does, how it works, and how to use it.
+**Purpose:** Provide details on the `hello` module — what it does, how it works, and how to use it!
 
 ---
 

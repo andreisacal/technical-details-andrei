@@ -141,4 +141,4 @@ Enhancement suggestions are tracked as [GitHub issues](/issues).
 
 
 ## Attribution
-This guide is based on the **contributing.md**. [Make your own](https://contributing.md/)!
+This guide is based on the **contributing.md**. [Make your own](https://contributing.md/)
