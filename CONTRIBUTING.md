@@ -28,7 +28,7 @@ All types of contributions are encouraged and valued. See the [Table of Contents
     - [Improving The Documentation](#improving-the-documentation)
   - [Styleguides](#styleguides)
     - [Commit Messages](#commit-messages)
-  - [Join The Project Team](#join-the-project-team)
+  - [Join The Project Team!](#join-the-project-team)
   - [Attribution](#attribution)
 
 
@@ -138,7 +138,7 @@ Enhancement suggestions are tracked as [GitHub issues](/issues).
 
 ## Join The Project Team!
 
-
+2312312312
 
 ## Attribution
 This guide is based on the **contributing.md**. [Make your own](https://contributing.md/)
