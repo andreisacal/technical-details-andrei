@@ -237,7 +237,7 @@ jobs:
           fi
 
           # Append safely to GitHub Step Summary
-          cat >> "$GITHUB_STEP_SUMMARY" << "EOF"
+          cat >> "$GITHUB_STEP_SUMMARY" << EOF
           # 📚 Documentation Sync Summary
 
           ## ✅ Documentation Files Updated
@@ -251,7 +251,7 @@ jobs:
           $VALIDATION_ERRORS
 
           ## ❌ Files Not Synced
-          These files could not be synced because they’re missing in the documentation repo.  
+          These files could not be synced because they're missing in the documentation repo.  
           A GitHub issue was automatically created for each — the documentation team should review and add them.
 
           Files:
