@@ -82,15 +82,33 @@ jobs:
           echo "📌 Running markdownlint..."
           # Create a temporary file to store validation results
           VALIDATION_FILE=$(mktemp)
+          echo "📝 Validation file created at: $VALIDATION_FILE"
+          
+          VALIDATION_COUNT=0
           while IFS= read -r file; do
             if [ -f "$file" ]; then
+              echo "🔍 Validating: $file"
               OUTPUT=$(markdownlint "$file" 2>&1 || true)
               if [ -n "$OUTPUT" ]; then
                 # Store validation results with file as key (using ||| as delimiter)
                 echo "${file}|||${OUTPUT}" >> "$VALIDATION_FILE"
+                VALIDATION_COUNT=$((VALIDATION_COUNT + 1))
+                echo "⚠️  Found issues in: $file"
+              else
+                echo "✓ No issues in: $file"
               fi
             fi
           done <<< "${{ steps.detect.outputs.changed_files }}"
+          
+          echo "📊 Total files with validation issues: $VALIDATION_COUNT"
+          
+          # Show validation file contents for debugging
+          if [ -s "$VALIDATION_FILE" ]; then
+            echo "📋 Validation results:"
+            cat "$VALIDATION_FILE"
+          else
+            echo "✅ No validation issues found in any files"
+          fi
           
           # Save the validation file path
           echo "validation_file=$VALIDATION_FILE" >> "$GITHUB_OUTPUT"
@@ -108,6 +126,14 @@ jobs:
           # Read validation file if it exists
           VALIDATION_FILE="${{ steps.validate.outputs.validation_file }}"
           
+          # Debug: show validation file contents
+          if [ -f "$VALIDATION_FILE" ]; then
+            echo "📋 Validation file contents:"
+            cat "$VALIDATION_FILE"
+          else
+            echo "⚠️ No validation file found at: $VALIDATION_FILE"
+          fi
+          
           while IFS= read -r file; do
             [ ! -f "$file" ] && continue
             filename_base=$(basename "$file" .md)
@@ -116,7 +142,16 @@ jobs:
             # Get validation warnings for this file
             FILE_WARNINGS=""
             if [ -f "$VALIDATION_FILE" ]; then
-              FILE_WARNINGS=$(grep "^${file}|||" "$VALIDATION_FILE" | sed "s|^${file}|||||" || true)
+              # Escape special regex characters in filename
+              ESCAPED_FILE=$(echo "$file" | sed 's/[]\/$*.^[]/\\&/g')
+              FILE_WARNINGS=$(grep "^${ESCAPED_FILE}|||" "$VALIDATION_FILE" | cut -d'|' -f4- || true)
+              
+              # Debug output
+              if [ -n "$FILE_WARNINGS" ]; then
+                echo "✓ Found warnings for: $file"
+              else
+                echo "○ No warnings for: $file"
+              fi
             fi
             
             if [ -n "$target_path" ]; then
@@ -142,6 +177,11 @@ jobs:
               fi
             fi
           done <<< "${{ steps.detect.outputs.changed_files }}"
+          
+          # Debug: show what we collected
+          echo "📊 Summary:"
+          echo "Synced warnings length: ${#SYNCED_WARNINGS}"
+          echo "Skipped warnings length: ${#SKIPPED_WARNINGS}"
           
           {
             echo "synced_files<<EOF"
