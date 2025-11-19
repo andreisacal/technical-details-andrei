@@ -1,37 +1,34 @@
-# This is an issue test
+# 👋 Hello Module Documentation
 
-this is a test
+**File:** `hello.md`  
+**Purpose:** Provide details on the `hello` module — what it does, how it works, and how to use it.
 
-testing again
+---
 
-test
-andrei
+## 📖 Overview
 
-test
+The `hello` module is a simple component that demonstrates the structure of a minimal program or function.  
+It outputs a greeting message and can be extended for localization, templating, or integration with other systems.
 
-test1231413543
+> Example:  
+> The `hello` module prints a friendly message such as `"Hello, World!"` when executed.
 
-hi
+---
 
-agian
+## 🧩 Features
 
-test
+- Prints customizable greeting messages  
+- Supports CLI and programmatic usage  
+- Easy to extend with environment variables or input parameters  
 
-afain
+---
 
-hello   fesfsefse
-2312312tbftbtfb
+## 🧠 Implementation
 
+The module contains a single function:
 
-andrei122445
-
-4535345
-me
-
-12312441
-
-2313
-
-123123
-
-123123
+```python
+def hello(name: str = "World") -> str:
+    """Return a personalized greeting message."""
+    return f"Hello, {name}!"
+```

@@ -1,39 +1,75 @@
-# TEST13
+# 🧪 Test Documentation
 
-Heloo hello!111
-213123fqwdwqdcwadwasxscsstest
+**File:** `test.md`  
+**Purpose:** Explain the purpose, structure, and execution details of the tests for this project.
 
-test1232312331231
+---
 
-test1231232133221312321
+## 📖 Overview
 
-hello
+Provide a short summary of what this test or test suite covers.
 
-test1234
+> Example:  
+> This document describes the automated tests for the user authentication module.  
+> It outlines the testing framework, setup requirements, test coverage, and execution steps.
 
-again
+---
 
-again
+## 🧩 Test Scope
 
-again
+| Area | Description |
+|------|--------------|
+| **Module** | The specific module or component being tested |
+| **Features Covered** | List of features, functions, or APIs verified by the tests |
+| **Exclusions** | Any parts not covered by the tests (and why) |
 
-andrei
+> Example:
+> - ✅ Login and logout  
+> - ✅ JWT validation  
+> - ❌ Email verification (covered separately in `auth-email.test.js`)
 
-## Test1
+---
 
-test
+## ⚙️ Test Environment
 
-hghgg
+List everything needed to run the tests successfully.
 
-2131232
-test345634
-bftbtf
-1242421sefsefesfs
+| Component | Version / Details |
+|------------|------------------|
+| Node.js | 20.x |
+| Framework | Jest 29.x |
+| OS | Ubuntu 22.04 |
+| Dependencies | PostgreSQL, Redis |
+| Environment Variables | `DATABASE_URL`, `JWT_SECRET` |
 
-lets go435
+---
 
-23123
+## 🧠 Test Design
 
-231234
+### 1. **Test Structure**
+Explain how your tests are organized.
 
-21312
+> Example:
+> ```
+> /tests
+> ├── auth/
+> │   ├── login.test.js
+> │   ├── logout.test.js
+> ├── user/
+> │   └── profile.test.js
+> └── utils/
+>     └── helpers.test.js
+> ```
+
+### 2. **Test Types**
+- **Unit Tests:** Validate individual functions and classes  
+- **Integration Tests:** Verify that modules interact correctly  
+- **End-to-End Tests (E2E):** Simulate real-world user flows  
+
+---
+
+## 🧪 Running the Tests
+
+### Using npm/yarn
+```bash
+npm test
