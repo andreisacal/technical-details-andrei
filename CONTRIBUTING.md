@@ -28,8 +28,8 @@ All types of contributions are encouraged and valued. See the [Table of Contents
     - [Improving The Documentation](#improving-the-documentation)
   - [Styleguides](#styleguides)
     - [Commit Messages](#commit-messages)
-  - [Join The Project Team!](#join-the-project-team)
-  - [Attribution](#attribution)
+  - [Join The Project Team!!](#join-the-project-team)
+  - [Attribution23123](#attribution23123)
 
 
 ## Code of Conduct
@@ -140,5 +140,5 @@ Enhancement suggestions are tracked as [GitHub issues](/issues).
 
 2312312312
 
-## Attribution
+## Attribution23123
 This guide is based on the **contributing.md**. [Make your own](https://contributing.md/)

@@ -15,7 +15,7 @@ It outputs a greeting message and can be extended for localization, templating, 
 
 ---2312312
 
-## 🧩 Features
+## 🧩 Features23123
 
 - Prints customizable greeting messages  
 - Supports CLI and programmatic usage  
