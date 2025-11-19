@@ -80,9 +80,9 @@ jobs:
         continue-on-error: true
         run: |
           echo "📌 Running markdownlint..."
-          # Create a temporary file to store validation results
-          VALIDATION_FILE=$(mktemp)
-          echo "📝 Validation file created at: $VALIDATION_FILE"
+          # Create a temporary directory to store validation results per file
+          VALIDATION_DIR=$(mktemp -d)
+          echo "📝 Validation directory created at: $VALIDATION_DIR"
           
           VALIDATION_COUNT=0
           while IFS= read -r file; do
@@ -90,10 +90,15 @@ jobs:
               echo "🔍 Validating: $file"
               OUTPUT=$(markdownlint "$file" 2>&1 || true)
               if [ -n "$OUTPUT" ]; then
-                # Store validation results with file as key (using ||| as delimiter)
-                echo "${file}|||${OUTPUT}" >> "$VALIDATION_FILE"
+                # Store validation results in a separate file for each source file
+                # Use base64 encoding of filename to avoid filesystem issues
+                SAFE_NAME=$(echo "$file" | base64 -w 0)
+                echo "$OUTPUT" > "$VALIDATION_DIR/${SAFE_NAME}"
+                # Also store the mapping
+                echo "${file}::${SAFE_NAME}" >> "$VALIDATION_DIR/mapping.txt"
                 VALIDATION_COUNT=$((VALIDATION_COUNT + 1))
                 echo "⚠️  Found issues in: $file"
+                echo "$OUTPUT"
               else
                 echo "✓ No issues in: $file"
               fi
@@ -102,16 +107,8 @@ jobs:
           
           echo "📊 Total files with validation issues: $VALIDATION_COUNT"
           
-          # Show validation file contents for debugging
-          if [ -s "$VALIDATION_FILE" ]; then
-            echo "📋 Validation results:"
-            cat "$VALIDATION_FILE"
-          else
-            echo "✅ No validation issues found in any files"
-          fi
-          
-          # Save the validation file path
-          echo "validation_file=$VALIDATION_FILE" >> "$GITHUB_OUTPUT"
+          # Save the validation directory path
+          echo "validation_dir=$VALIDATION_DIR" >> "$GITHUB_OUTPUT"
 
       - name: 🚀 Sync Files to Target Repository
         if: steps.detect.outputs.has_changes == 'true'
@@ -123,16 +120,8 @@ jobs:
           SKIPPED_WARNINGS=""
           FILES_UPDATED=0
           
-          # Read validation file if it exists
-          VALIDATION_FILE="${{ steps.validate.outputs.validation_file }}"
-          
-          # Debug: show validation file contents
-          if [ -f "$VALIDATION_FILE" ]; then
-            echo "📋 Validation file contents:"
-            cat "$VALIDATION_FILE"
-          else
-            echo "⚠️ No validation file found at: $VALIDATION_FILE"
-          fi
+          # Read validation directory if it exists
+          VALIDATION_DIR="${{ steps.validate.outputs.validation_dir }}"
           
           while IFS= read -r file; do
             [ ! -f "$file" ] && continue
@@ -141,13 +130,11 @@ jobs:
             
             # Get validation warnings for this file
             FILE_WARNINGS=""
-            if [ -f "$VALIDATION_FILE" ]; then
-              # Escape special regex characters in filename
-              ESCAPED_FILE=$(echo "$file" | sed 's/[]\/$*.^[]/\\&/g')
-              FILE_WARNINGS=$(grep "^${ESCAPED_FILE}|||" "$VALIDATION_FILE" | cut -d'|' -f4- || true)
-              
-              # Debug output
-              if [ -n "$FILE_WARNINGS" ]; then
+            if [ -d "$VALIDATION_DIR" ] && [ -f "$VALIDATION_DIR/mapping.txt" ]; then
+              # Find the safe name for this file
+              SAFE_NAME=$(grep "^${file}::" "$VALIDATION_DIR/mapping.txt" | cut -d':' -f3)
+              if [ -n "$SAFE_NAME" ] && [ -f "$VALIDATION_DIR/${SAFE_NAME}" ]; then
+                FILE_WARNINGS=$(cat "$VALIDATION_DIR/${SAFE_NAME}")
                 echo "✓ Found warnings for: $file"
               else
                 echo "○ No warnings for: $file"
@@ -164,7 +151,7 @@ jobs:
                 
                 # Add warnings for synced files
                 if [ -n "$FILE_WARNINGS" ]; then
-                  SYNCED_WARNINGS="${SYNCED_WARNINGS}**${file}**:\n${FILE_WARNINGS}\n\n"
+                  SYNCED_WARNINGS="${SYNCED_WARNINGS}**${file}**:\n\`\`\`\n${FILE_WARNINGS}\n\`\`\`\n\n"
                 fi
               fi
             else
@@ -173,7 +160,7 @@ jobs:
               
               # Add warnings for skipped files
               if [ -n "$FILE_WARNINGS" ]; then
-                SKIPPED_WARNINGS="${SKIPPED_WARNINGS}**${file}**:\n${FILE_WARNINGS}\n\n"
+                SKIPPED_WARNINGS="${SKIPPED_WARNINGS}**${file}**:\n\`\`\`\n${FILE_WARNINGS}\n\`\`\`\n\n"
               fi
             fi
           done <<< "${{ steps.detect.outputs.changed_files }}"
@@ -223,8 +210,11 @@ jobs:
                 const content = await fs.readFile(file, 'utf8');
                 const fileName = file.split('/').pop();
                 
-                // Extract warnings for this specific file
-                const fileWarningMatch = skippedWarnings.match(new RegExp(`\\*\\*${file.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\*\\*:\\n([\\s\\S]*?)(?=\\n\\n|$)`));
+                // Extract warnings for this specific file - look for the file wrapped in ** and the code block after it
+                const escapedFile = file.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+                const fileWarningMatch = skippedWarnings.match(
+                  new RegExp(`\\*\\*${escapedFile}\\*\\*:\\n\`\`\`\\n([\\s\\S]*?)\\n\`\`\``, 'm')
+                );
                 const fileWarnings = fileWarningMatch ? fileWarningMatch[1].trim() : '';
                 
                 let issueBody = [
