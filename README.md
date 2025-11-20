@@ -26,9 +26,8 @@ An in-depth paragraph about your project and overview of use.
 code blocks for commands
 ```
 
-3123123123123
 
-## Help?12323123213
+## Help?
 
 Any advise for common problems or issues.
 ```
