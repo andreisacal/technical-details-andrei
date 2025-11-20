@@ -138,7 +138,6 @@ Enhancement suggestions are tracked as [GitHub issues](/issues).
 
 ## Join The Project Team!!
 
-23123123122312312
 
 ## Attribution23123
 This guide is based on the **contributing.md**. [Make your own](https://contributing.md/)
