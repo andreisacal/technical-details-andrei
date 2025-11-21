@@ -264,7 +264,7 @@ jobs:
           SKIPPED_FILES: ${{ steps.sync.outputs.skipped_files }}
           SKIPPED_WARNINGS: ${{ steps.sync.outputs.skipped_warnings }}
 
-      - name: Export Issue URLs
+      - name: 🌐 Export Issue URLs
         if: steps.create_issues.outputs.issue-urls
         run: echo "ISSUE_URLS=${{ steps.create_issues.outputs.issue-urls }}" >> $GITHUB_ENV
 
