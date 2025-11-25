@@ -10,7 +10,7 @@
 The `hello` module is a simple component that demonstrates the structure of a minimal program or function.  
 It outputs a greeting message and can be extended for localization, templating, or integration with other systems.
 
-> Example:  
+> Example?:  
 > The `hello` module prints a friendly message such as `"Hello, World!"` when executed.
 
 ---
